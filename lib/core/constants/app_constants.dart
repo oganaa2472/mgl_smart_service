@@ -4,6 +4,8 @@ class AppConstants {
   
   // API endpoints
   static const String graphqlEndpoint = 'https://api.mglsmartwash.com/graphql';  // Example URL
+
+
   
   // Asset paths
   static const String imagePath = 'assets/images';
