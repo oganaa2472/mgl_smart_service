@@ -1,17 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/graphql/graphql_client.dart';
 import 'core/di/locator_service.dart';
-import 'presentation/pages/splash_screen.dart';
+import 'core/router/app_router.dart';
+import 'core/localization/app_localizations.dart';
+import 'core/localization/locale_provider.dart';
 import 'presentation/bloc/auth/auth_bloc.dart';
-import 'presentation/pages/home/home_page.dart';
+import 'presentation/bloc/user/user_bloc.dart';
+import 'dart:io';
+
 void main() async {
+  HttpOverrides.global = MyHttpOverrides();
   WidgetsFlutterBinding.ensureInitialized();
   await initHiveForFlutter();
   await LocatorService.init();
   runApp(const MyApp());
+}
+
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -23,20 +38,33 @@ class MyApp extends StatelessWidget {
     
     return GraphQLProvider(
       client: client,
-      child: MultiBlocProvider(
-        providers: [
-          BlocProvider(
-            create: (context) => locator<AuthBloc>(),
+              child: MultiBlocProvider(
+          providers: [
+            BlocProvider(
+              create: (context) => locator<AuthBloc>(),
+            ),
+            BlocProvider(
+              create: (context) => locator<UserBloc>(),
+            ),
+          ],
+          child: ChangeNotifierProvider(
+            create: (context) => LocaleProvider(),
+            child: Consumer<LocaleProvider>(
+              builder: (context, localeProvider, child) {
+                return MaterialApp.router(
+                  title: 'MGL Smart Wash',
+                  debugShowCheckedModeBanner: false,
+                  theme: AppTheme.light,
+                  darkTheme: AppTheme.dark,
+                  routerConfig: AppRouter.router,
+                  localizationsDelegates: AppLocalizations.localizationsDelegates,
+                  supportedLocales: AppLocalizations.supportedLocales,
+                  locale: localeProvider.locale,
+                );
+              },
+            ),
           ),
-        ],
-        child: MaterialApp(
-          title: 'MGL Smart Wash',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light,
-          darkTheme: AppTheme.dark,
-          home: const SplashScreen(),
         ),
-      ),
     );
   }
 }

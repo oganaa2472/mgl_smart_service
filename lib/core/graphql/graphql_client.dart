@@ -20,16 +20,23 @@ class GraphQLConfig {
         'Accept-Encoding': 'gzip, deflate, br',
         'Connection': 'keep-alive',
         'Content-Type': 'application/json',
+        'User-Agent': 'MGL-Smart-Wash-App/1.0',
       },
     );
-
+   print(token);
     final AuthLink authLink = AuthLink(
-      getToken: () => token != null ? 'Bearer $token' : '',
+      getToken: () {
+        final authToken = token != null ? 'JWT $token' : '';
+        // print('GraphQL Auth Token (getClient): $authToken');
+        return authToken;
+      },
     );
 
     final ErrorLink errorLink = ErrorLink(
       onGraphQLError: (request, forward, response) {
         debugPrint('GraphQL Error Response: $response');
+        debugPrint('Request Operation: ${request.operation.operationName}');
+        debugPrint('Request Document: ${request.operation.document}');
         for (final error in response.errors ?? []) {
           debugPrint('Error: ${error.message}');
           debugPrint('Location: ${error.locations}');
@@ -40,10 +47,13 @@ class GraphQLConfig {
       },
       onException: (request, forward, exception) {
         debugPrint('Network Exception: $exception');
+        debugPrint('Request Operation: ${request.operation.operationName}');
+        debugPrint('Request Document: ${request.operation.document}');
         if (exception is HttpLinkServerException) {
           debugPrint('Server Response: ${exception.response}');
           debugPrint('Response Body: ${exception.response.body}');
           debugPrint('Status Code: ${exception.response.statusCode}');
+          debugPrint('Response Headers: ${exception.response.headers}');
         } 
        
         return forward(request);
@@ -88,6 +98,18 @@ class GraphQLConfig {
         'Accept-Encoding': 'gzip, deflate, br',
         'Connection': 'keep-alive',
         'Content-Type': 'application/json',
+        'User-Agent': 'MGL-Smart-Wash-App/1.0',
+      },
+    );
+
+    final AuthLink authLink = AuthLink(
+      getToken: () async {
+        final SharedPreferences prefs = await SharedPreferences.getInstance();
+        final String? token = prefs.getString('auth_token');
+        final authToken = token != null ? 'JWT $token' : '';
+        print('GraphQL Auth Token (initializeClient): $authToken');
+        print('Raw token from SharedPreferences: $token');
+        return authToken;
       },
     );
 
@@ -120,6 +142,7 @@ class GraphQLConfig {
     final Link link = Link.from([
       errorLink,
       timeoutLink,
+      authLink,
       httpLink,
     ]);
 

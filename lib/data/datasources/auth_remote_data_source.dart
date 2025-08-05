@@ -65,16 +65,16 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       debugPrint('Raw GraphQL Response: ${result.data}');
       
-      if (result.hasException) {
-        debugPrint('GraphQL Errors: ${result.exception?.graphqlErrors}');
-        debugPrint('Network Error: ${result.exception?.linkException}');
+      // if (result.hasException) {
+      //   debugPrint('GraphQL Errors: ${result.exception?.graphqlErrors}');
+      //   debugPrint('Network Error: ${result.exception?.linkException}');
         
-        final errorMessage = result.exception?.graphqlErrors.firstOrNull?.message ??
-            result.exception?.linkException.toString() ??
-            'Failed to send OTP';
+      //   final errorMessage = result.exception?.graphqlErrors.firstOrNull?.message ??
+      //       result.exception?.linkException.toString() ??
+      //       'Failed to send OTP';
             
-        throw ServerFailure(message: errorMessage);
-      }
+      //   throw ServerFailure(message: errorMessage);
+      // }
 
       if (result.data == null) {
         debugPrint('No data received from server');
@@ -83,7 +83,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       // Verify the response structure
       if (isPhone) {
-        final phoneResponse = result.data!['phoneCode'];
+        final phoneResponse = result.data!['smsCode'];
+        print(phoneResponse.toString());
         if (phoneResponse == null || phoneResponse['phone'] == null) {
           debugPrint('Invalid phone response structure: $phoneResponse');
           throw ServerFailure(message: 'Invalid server response for phone OTP');
@@ -115,9 +116,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }) async {
     try {
       debugPrint('Verifying OTP for contact: $contact');
-      print(isPhone);
-      print(otp);
-      print(contact);
+      debugPrint('Is Phone: $isPhone');
+      debugPrint('OTP: $otp');
+      debugPrint('Contact: $contact');
+      debugPrint('Variables being sent: {"username": "$contact", "password": "$otp", "types": "${isPhone ? 'phone' : 'email'}"}');
+      debugPrint('GraphQL Endpoint: ${AppConstants.graphqlEndpoint}');
+      debugPrint('GraphQL Mutation: ${AuthQueries.verifyOtp}');
+      
       final result = await client.mutate(
         MutationOptions(
           document: gql(AuthQueries.verifyOtp),
@@ -131,13 +136,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
 
       debugPrint('Verify OTP Response: ${result.data}');
+      debugPrint('Response keys: ${result.data?.keys.toList()}');
+      if (result.data != null && result.data!['tokenAuth'] != null) {
+        debugPrint('TokenAuth keys: ${result.data!['tokenAuth'].keys.toList()}');
+        debugPrint('User data: ${result.data!['tokenAuth']['user']}');
+      }
 
       if (result.hasException) {
         debugPrint('GraphQL Errors: ${result.exception?.graphqlErrors}');
         debugPrint('Network Error: ${result.exception?.linkException}');
-        throw ServerFailure(
-          message: result.exception?.graphqlErrors.firstOrNull?.message ?? 'Invalid OTP',
-        );
+        
+        final errorMessage = result.exception?.graphqlErrors.firstOrNull?.message ?? 
+                           result.exception?.linkException.toString() ?? 
+                           'Invalid OTP';
+        
+        debugPrint('Error message: $errorMessage');
+        throw ServerFailure(message: errorMessage);
       }
 
       if (result.data == null || result.data!['tokenAuth'] == null) {

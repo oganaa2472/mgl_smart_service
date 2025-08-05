@@ -13,7 +13,6 @@ class AuthQueries {
   static String requestOtpPhone = '''
     mutation smsCode(\$phone: String!) {
       smsCode(phone: \$phone) {
-        __typename
         phone {
           id
         }
@@ -55,6 +54,49 @@ class AuthQueries {
       logout {
         success
         message
+      }
+    }
+  ''';
+
+  static String getCompaniesByCategory = '''
+    query company(
+      \$searchBy: [String!]
+    ) {
+      company(searchBy: \$searchBy) {
+        id
+        name
+        logo
+        point
+        address
+        category {
+          id
+          name
+        }
+        accounts {
+          edges {
+            node {
+              accountName
+              accountOwner
+              iban
+              account
+            }
+          }
+        }
+      }
+    }
+  ''';
+
+  static String createCompany = '''
+    mutation createCompany(
+      \$name: String!,
+      \$address: String!,
+      \$logo: String
+    ) {
+      createCompany(name: \$name, address: \$address, logo: \$logo) {
+        id
+        name
+        address
+        logo
       }
     }
   ''';
