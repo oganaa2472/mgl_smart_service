@@ -1,18 +1,20 @@
 import 'package:equatable/equatable.dart';
 
 class User extends Equatable {
-  final String id;
-  final String name;
-  final String email;
-  final String phoneNumber;
+  final String? id;
+  final String? username;
+  final String? lastName;
+  final String? email;
+  final String? phone;
 
   const User({
     required this.id,
-    required this.name,
+    required this.username,
+    required this.lastName,
     required this.email,
     required this.phoneNumber,
   });
 
   @override
-  List<Object?> get props => [id, name, email, phoneNumber];
+  List<Object?> get props => [id, username, lastName, email, phone];
 } 

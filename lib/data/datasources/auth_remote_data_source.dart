@@ -34,17 +34,37 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         ),
       );
 
-      if (result.hasException) {
-        throw ServerFailure(
-          message: result.exception?.graphqlErrors.first.message ?? 'Login failed',
-        );
-      }
+      debugPrint('Raw GraphQL Response: ${result.data}');
+      
+      // if (result.hasException) {
+      //   debugPrint('GraphQL Errors: ${result.exception?.graphqlErrors}');
+      //   debugPrint('Network Error: ${result.exception?.linkException}');
+        
+      //   final errorMessage = result.exception?.graphqlErrors.firstOrNull?.message ??
+      //       result.exception?.linkException.toString() ??
+      //       'Failed to send OTP';
+            
+      //   throw ServerFailure(message: errorMessage);
+      // }
 
       final token = result.data?['login']['token'] as String;
       await prefsService.setAuthToken(token);
 
-      final user = UserModel.fromJson(result.data?['login']['user']);
-      await prefsService.setUserData(user.toJson().toString());
+      // Verify the response structure
+      if (isPhone) {
+        final phoneResponse = result.data!['smsCode'];
+        print(phoneResponse.toString());
+        if (phoneResponse == null || phoneResponse['phone'] == null) {
+          debugPrint('Invalid phone response structure: $phoneResponse');
+          throw ServerFailure(message: 'Invalid server response for phone OTP');
+        }
+      } else {
+        final emailResponse = result.data!['mailCode'];
+        if (emailResponse == null || emailResponse['mail'] == null) {
+          debugPrint('Invalid email response structure: $emailResponse');
+          throw ServerFailure(message: 'Invalid server response for email OTP');
+        }
+      }
 
       return user;
     } catch (e) {
@@ -55,6 +75,14 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<UserModel> register(String name, String email, String password, String phoneNumber) async {
     try {
+      debugPrint('Verifying OTP for contact: $contact');
+      debugPrint('Is Phone: $isPhone');
+      debugPrint('OTP: $otp');
+      debugPrint('Contact: $contact');
+      debugPrint('Variables being sent: {"username": "$contact", "password": "$otp", "types": "${isPhone ? 'phone' : 'email'}"}');
+      debugPrint('GraphQL Endpoint: ${AppConstants.graphqlEndpoint}');
+      debugPrint('GraphQL Mutation: ${AuthQueries.verifyOtp}');
+      
       final result = await client.mutate(
         MutationOptions(
           document: gql(AuthQueries.register),
@@ -67,10 +95,23 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         ),
       );
 
+      debugPrint('Verify OTP Response: ${result.data}');
+      debugPrint('Response keys: ${result.data?.keys.toList()}');
+      if (result.data != null && result.data!['tokenAuth'] != null) {
+        debugPrint('TokenAuth keys: ${result.data!['tokenAuth'].keys.toList()}');
+        debugPrint('User data: ${result.data!['tokenAuth']['user']}');
+      }
+
       if (result.hasException) {
-        throw ServerFailure(
-          message: result.exception?.graphqlErrors.first.message ?? 'Registration failed',
-        );
+        debugPrint('GraphQL Errors: ${result.exception?.graphqlErrors}');
+        debugPrint('Network Error: ${result.exception?.linkException}');
+        
+        final errorMessage = result.exception?.graphqlErrors.firstOrNull?.message ?? 
+                           result.exception?.linkException.toString() ?? 
+                           'Invalid OTP';
+        
+        debugPrint('Error message: $errorMessage');
+        throw ServerFailure(message: errorMessage);
       }
 
       final token = result.data?['register']['token'] as String;

@@ -9,6 +9,11 @@ import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/usecases/login_usecase.dart';
 import '../../presentation/bloc/auth/auth_bloc.dart';
+import '../../data/datasources/user_remote_data_source.dart';
+import '../../data/repositories/user_repository_impl.dart';
+import '../../domain/repositories/user_repository.dart';
+import '../../domain/usecases/get_users.dart';
+import '../../presentation/bloc/user/user_bloc.dart';
 
 final GetIt locator = GetIt.instance;
 
@@ -20,6 +25,7 @@ class LocatorService {
 
     // Core Services
     locator.registerLazySingleton(() => SharedPrefsService(locator()));
+    locator.registerLazySingleton(() => GraphQLConfig());
     
     final client = await GraphQLConfig.getClient();
     locator.registerLazySingleton(() => client);
@@ -31,17 +37,25 @@ class LocatorService {
         prefsService: locator(),
       ),
     );
+    
+    locator.registerLazySingleton<UserRemoteDataSource>(
+      () => UserRemoteDataSourceImpl(client: locator()),
+    );
 
     // Repositories
     locator.registerLazySingleton<AuthRepository>(
       () => AuthRepositoryImpl(remoteDataSource: locator()),
     );
+    
+    locator.registerLazySingleton<UserRepository>(
+      () => UserRepositoryImpl(remoteDataSource: locator()),
+    );
 
     // Use Cases
-    locator.registerLazySingleton(() => LoginUseCase(locator()));
+    locator.registerLazySingleton(() => GetUsers(locator()));
 
     // BLoCs
-    locator.registerFactory(() => AuthBloc(loginUseCase: locator()));
+    locator.registerFactory(() => AuthBloc(authRepository: locator()));
   }
 
   static void reset() {
